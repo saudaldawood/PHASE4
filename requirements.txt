@@ -1,3 +1,9 @@
 openai>=1.30.0
 matplotlib>=3.7.0
 pytest>=7.0.0
+
+# Voice path (optional; needed for /voice and /file slash commands and
+# for scripts/voice_demo.py). The Whisper transcription itself only
+# needs `openai`, but live microphone capture needs these two:
+sounddevice>=0.4.6
+soundfile>=0.12.1

@@ -1,4 +1,4 @@
-"""Interactive demo. Slash commands: /state /audit /role <r> /quit."""
+"""Interactive demo. Slash commands: /state /audit /role <r> /voice [secs] /file <path> /quit."""
 
 from __future__ import annotations
 
@@ -13,6 +13,9 @@ sys.path.insert(0, str(ROOT))
 from src.llm_client import make_client            # noqa: E402
 from src.pipeline import PatientRoomAgent          # noqa: E402
 from src.room import PatientRoom                   # noqa: E402
+from src.voice import (                            # noqa: E402
+    transcribe_file, transcribe_microphone,
+)
 
 
 def main():
@@ -30,7 +33,13 @@ def main():
 
     backend = getattr(llm, "model", None) or getattr(llm, "backend_name", "?")
     print(f"== Patient Room Demo ==  actor={args.actor}  backend={backend}")
-    print("Type a command, or /state /audit /role X /quit")
+    print("Type a command. Slash commands:")
+    print("  /state                  show current room state")
+    print("  /audit                  show audit log")
+    print("  /role <role>            switch actor")
+    print("  /voice [seconds]        record from mic and transcribe")
+    print("  /file <path>            transcribe an audio file")
+    print("  /quit                   exit")
     while True:
         try:
             line = input(f"[{agent.default_actor}] > ").strip()
@@ -51,6 +60,30 @@ def main():
             agent.default_actor = line.split(maxsplit=1)[1].strip()
             print(f"actor -> {agent.default_actor}")
             continue
+        if line.startswith("/voice"):
+            parts = line.split()
+            secs = float(parts[1]) if len(parts) > 1 else 5.0
+            print(f"  recording {secs:.1f} s ...")
+            try:
+                tr = transcribe_microphone(seconds=secs)
+            except Exception as exc:
+                print(f"  voice error: {exc}")
+                continue
+            print(f"  heard: {tr.text!r}  ({tr.latency_s*1000:.0f} ms)")
+            line = tr.text
+            if not line:
+                continue
+        elif line.startswith("/file "):
+            path = line.split(maxsplit=1)[1].strip()
+            try:
+                tr = transcribe_file(path)
+            except Exception as exc:
+                print(f"  voice error: {exc}")
+                continue
+            print(f"  heard: {tr.text!r}  ({tr.latency_s*1000:.0f} ms)")
+            line = tr.text
+            if not line:
+                continue
         result = agent.handle(line)
         print(f"  rationale: {result.rationale}")
         for ex in result.executions:
